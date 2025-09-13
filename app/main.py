@@ -12,6 +12,9 @@ app = FastAPI(title="LungLens")
 add_cors_middleware(app)
 add_logging_middleware(app)
 
+@app.get("/")
+def hello_world():
+    return {"message": "Hello, World!"}
 
-# Predict routers
+# Include API routers
 app.include_router(predict.router)

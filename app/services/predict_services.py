@@ -5,7 +5,7 @@ import os
 import numpy as np
 import cv2
 import tensorflow as tf
-from starlette.concurrency import run_in_threadpool
+from starlette.concurrency import run_in_threadpool 
 
 
 logger = logging.getLogger(__name__)
@@ -14,12 +14,7 @@ logger.setLevel(logging.INFO)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 IMAGE_SIZE = (128, 128)
-CLASS_NAMES = [
-    "adenocarcinoma",
-    "large.cell.carcinoma",
-    "normal",
-    "squamous.cell.carcinoma",
-]
+CLASS_NAMES = ['adenocarcinoma', 'large.cell.carcinoma', 'normal', 'squamous.cell.carcinoma']
 
 
 try:
@@ -47,29 +42,25 @@ async def predict_uploaded_image(file: UploadFile = File(...)):
             raise ValueError("Failed to decode image")
         logger.info(f"[predict_uploaded_image] Decoded image: {file.filename}")
 
+
         resized_image = cv2.resize(image, IMAGE_SIZE)
         scaled_image = resized_image / 255.0
         input_image = np.expand_dims(scaled_image, axis=0)
 
-        predictions = await run_in_threadpool(
-            cancer_prediction_model.predict, input_image
-        )
+
+        predictions = await run_in_threadpool(cancer_prediction_model.predict, input_image)
         predicted_index = int(np.argmax(predictions))
         predicted_class = CLASS_NAMES[predicted_index]
         confidence = float(predictions[0][predicted_index])
 
-        logger.info(
-            f"[predict_uploaded_image] Prediction: {predicted_class} ({confidence:.2f})"
-        )
+        logger.info(f"[predict_uploaded_image] Prediction: {predicted_class} ({confidence:.2f})")
 
         return {
             "predicted_class": predicted_class,
             "confidence": confidence,
-            "all_probabilities": predictions[0].tolist(),
+            "all_probabilities": predictions[0].tolist()
         }
 
     except Exception as e:
-        logger.error(
-            f"[predict_uploaded_image] Error processing file {file.filename}: {e}"
-        )
+        logger.error(f"[predict_uploaded_image] Error processing file {file.filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {e}")
