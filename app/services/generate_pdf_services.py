@@ -1,4 +1,3 @@
-from fastapi import Form
 import matplotlib.pyplot as plt
 import io
 from reportlab.lib.pagesizes import letter
