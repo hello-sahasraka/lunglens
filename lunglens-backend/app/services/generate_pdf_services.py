@@ -7,21 +7,23 @@ from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
 from fastapi.responses import StreamingResponse
 from app.utils.image_utils import delete_image
+import numpy as np
 
 
 def plot_confidence_chart(predictions):
     classes = ["Normal", "Adenocarcinoma", "Squamous Cell", "Large Cell"]
 
+    print("Raw predictions:", type(predictions))
+
     # Calculate prediction percentages
-    prediction_percentages = predictions[0] * 100
+    prediction_percentages = np.array(predictions) * 100
     print("Prediction Percentages:", prediction_percentages)
 
     # Confidence Chart
-    plt.figure(figsize=(7, 6))
+    plt.figure(figsize=(12, 6))
     plt.bar(classes, prediction_percentages, color="skyblue", edgecolor="black")
-    plt.xlabel("Cancer Types", fontsize=14)
-    plt.ylabel("Percentage", fontsize=14)
-    plt.title("Confidence Chart", fontsize=18)
+    plt.xlabel("Cancer Types", fontsize=14, labelpad=15)
+    plt.ylabel("Percentage", fontsize=14, labelpad=15)
 
     # Save chart to an in-memory bytes buffer
     buf = io.BytesIO()
@@ -39,62 +41,72 @@ def generate_pdf_report(predicted_class, confidence, predictions, ct_image_path=
     width, height = letter
     margin = 50
 
-    # Background color (optional, subtle)
-    c.setFillColorRGB(0.98, 0.98, 0.98)  # light grey background
+    # Light grey background
+    c.setFillColorRGB(0.98, 0.98, 0.98)
     c.rect(0, 0, width, height, fill=1, stroke=0)
-    c.setFillColor(colors.black)
 
     # Title
-    c.setFont("Helvetica-Bold", 22)
+    c.setFont("Helvetica-Bold", 24)
+    c.setFillColor(colors.darkblue)
     c.drawCentredString(width / 2, height - margin, "Lung Cancer Prediction Report")
 
-    # Divider line
-    c.setStrokeColor(colors.lightgrey)
-    c.setLineWidth(1)
-    c.line(margin, height - margin - 10, width - margin, height - margin - 10)
+    # Subtitle rectangle decoration
+    c.setFillColorRGB(0.9, 0.95, 1)
+    c.rect(margin, height - margin - 40, width - 2 * margin, 30, fill=1, stroke=0)
 
-    # Predicted Class & Confidence
-    c.setFont("Helvetica-Bold", 16)
-    c.setFillColor(colors.darkblue)
-    c.drawString(margin, height - margin - 60, f"Predicted Class: {predicted_class}")
-
-    c.setFont("Helvetica", 14)
+    # Predicted Class & Confidence (centered)
     c.setFillColor(colors.black)
-    c.drawString(margin, height - margin - 85, f"Confidence: {confidence}")
+    c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(
+        width / 2, height - margin - 80, f"Predicted Class: {predicted_class}"
+    )
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(
+        width / 2, height - margin - 105, f"Confidence: {float(confidence) * 100:.2f}%"
+    )
 
     # Divider
     c.setStrokeColor(colors.lightgrey)
-    c.setLineWidth(0.5)
-    c.line(margin, height - margin - 100, width - margin, height - margin - 100)
+    c.setLineWidth(1)
+    c.line(margin, height - margin - 120, width - margin, height - margin - 120)
 
-    # Position for images
-    y_position = height - margin - 130
+    # Starting position for images
+    y_position = height - margin - 150
 
-    # Add CT scan image
+    # Add CT scan image with title
     if ct_image_path:
         try:
+            c.setFont("Helvetica-Bold", 14)
+            c.drawCentredString(width / 2, y_position, "CT Scan Image")
+            y_position -= 20
             c.drawImage(
                 ct_image_path,
                 margin,
                 y_position - 200,
-                width=500,
+                width=width - 2 * margin,
                 height=200,
                 preserveAspectRatio=True,
+                anchor="c",
             )
             y_position -= 220
         except Exception as e:
             print(f"Failed to add CT image: {e}")
 
-    # Add confidence chart
+
+    # Add confidence chart with title
     chart_buf = plot_confidence_chart(predictions)
     chart_image = ImageReader(chart_buf)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(width / 2, y_position, "Prediction Confidence Chart")
+    y_position -= 20
     c.drawImage(
         chart_image,
         margin,
         y_position - 250,
-        width=500,
+        width=width - 2 * margin,
         height=250,
         preserveAspectRatio=True,
+        anchor="c",
     )
 
     # Footer
@@ -108,6 +120,7 @@ def generate_pdf_report(predicted_class, confidence, predictions, ct_image_path=
     c.save()
     pdf_buffer.seek(0)
 
+    # Delete temporary CT image
     delete_image(ct_image_path)
 
     return StreamingResponse(

@@ -23,9 +23,10 @@ async def pdf_generate(
     predictions: str = Form(...),
     ct_scan: UploadFile = File(...),
 ):
+    print("Predictions:", predictions)
     ct_image_path = await save_image(ct_scan)
     predictions_list = json.loads(predictions)
-
+    print("Predictions list:", predictions_list)
     return generate_pdf_report(
         predicted_class, confidence, predictions_list, ct_image_path
     )
