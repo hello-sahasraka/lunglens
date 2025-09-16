@@ -55,11 +55,14 @@ async def predict_uploaded_image(file: UploadFile = File(...)):
 
         logger.info(f"[predict_uploaded_image] Prediction: {predicted_class} ({confidence:.2f})")
 
-        return {
+        result = {
+            
             "predicted_class": predicted_class,
             "confidence": confidence,
             "all_probabilities": predictions[0].tolist()
         }
+        
+        return JSONResponse(status_code=200, content=result)
 
     except Exception as e:
         logger.error(f"[predict_uploaded_image] Error processing file {file.filename}: {e}")
